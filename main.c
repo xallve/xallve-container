@@ -23,13 +23,22 @@ int container_main(void* arg) {
 
     // Processes here
     // Processes here
+    run_dependencies(container);
     run_command(container);
 
     return 0;
 }
 
 int main() {
-    Xallve_Container* main_container = create_container("xallve_container", "/tmp/xallve_container", "/bin/sh", "10.0.0.2");
+    // TODO add cli to manage this
+    Xallve_Container* main_container = create_container("xallve_container",
+                                                        "/tmp/xallve_container",
+                                                        "/bin/sh",
+                                                        "10.0.0.2", 
+                                                        512, 
+                                                        1024 * 1024 * 64, 
+                                                        "apt-get update && apt-get install -y python3 python3-pip");
+                                                        // 512 CPU shares, 64 MB memory limit, Python installation
     if (main_container) {
         printf("Container created: %s\n", main_container->name);
 

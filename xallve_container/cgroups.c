@@ -4,39 +4,59 @@
 #include <string.h>
 #include <unistd.h>
 
-void setup_cgroups(const char *name) {
+void setup_cgroups(const Xallve_Container* container) {
     char path[256];
-    snprintf(path, sizeof(path), "sys/fs/cgroup/pids/%s", name);
+    snprintf(path, sizeof(path), "/sys/fs/cgroup/cpu/%s", container->name);
+    mkdir(path, 0755);
 
-    // Creating CGroup catalog
-    if (mkdir(path, 0755) != 0) {
-        perror("Failed to create cgroup directory");
-        return;
+    snprintf(path, sizeof(path), "/sys/fs/cgroup/memory/%s", container->name);
+    mkdir(path, 0755);
+
+    // CPU limit
+    snprintf(path, sizeof(path), "/sys/fs/cgroup/cpu/%s/cpu.shares", container->name);
+    FILE* cpu_file = fopen(path, "w");
+    if (cpu_file) {
+        fprintf(cpu_file, "%d", container->cpu_shares);
+        fclose(cpu_file);
+    } else {
+        perror("Failed to set CPU shares");
     }
 
-    // Limit number of processes
-    char max_pids[32];
-    snprintf(max_pids, sizeof(max_pids), "%d", 10);
-    FILE *fp = fopen(strcat(path, "/pids.max"), "w");
-    if (fp) {
-        fputs(max_pids, fp);
-        fclose(fp);
+    // Memory limit
+    snprintf(path, sizeof(path), "/sys/fs/cgroup/memory/%s/memory.limit_in_bytes", container->name);
+    FILE* mem_file = fopen(path, "w");
+    if (mem_file) {
+        fprintf(mem_file, "%d", container->memory_limit_in_bytes);
+        fclose(mem_file);
+    } else {
+        perror("Failed to set memory limit");
     }
 
-    // Adding current process to CGroup
-    fp = fopen(strcat(path, "/cgroup.procs"), "w");
-    if (fp) {
-        fprintf(fp, "%d", getpid());
-        fclose(fp);
+    // Current process to CGroups
+    snprintf(path, sizeof(path), "/sys/fs/cgroup/cpu/%s/tasks", container->name);
+    FILE* tasks_file = fopen(path, "w");
+    if (tasks_file) {
+        fprintf(tasks_file, "%d", getpid());
+        fclose(tasks_file);
+    } else {
+        perror("Failed to add process to CPU cgroup");
+    }
+
+    snprintf(path, sizeof(path), "/sys/fs/cgroup/memory/%s/tasks", container->name);
+    tasks_file = fopen(path, "w");
+    if (tasks_file) {
+        fprintf(tasks_file, "%d", getpid());
+        fclose(tasks_file);
+    } else {
+        perror("Failed to add process to memory cgroup");
     }
 }
 
 void destroy_cgroups(const char *name) {
     char path[256];
-    snprintf(path, sizeof(path), "/sys/fs/cgroup/pids/%s", name);
+    snprintf(path, sizeof(path), "/sys/fs/cgroup/cpu/%s", name);
+    rmdir(path);
 
-    // remove CGroup catalog
-    if (rmdir(path) != 0) {
-        perror("Failed to remove cgroup directory");
-    }
+    snprintf(path, sizeof(path), "/sys/fs/cgroup/memory/%s", name);
+    rmdir(path);
 }
