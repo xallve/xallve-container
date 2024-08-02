@@ -8,12 +8,13 @@
 #include <errno.h>
 #include <sched.h>
 
-Xallve_Container* create_container(const char* name, const char* rootfs_path) {
+Xallve_Container* create_container(const char* name, const char* rootfs_path, const char *command) {
     Xallve_Container* container = malloc(sizeof(Xallve_Container));
     if (!container) return NULL;
 
     strncpy(container->name, name, sizeof(container->name) - 1);
     strncpy(container->rootfs_path, rootfs_path, sizeof(container->rootfs_path) - 1);
+    strncpy(container->command, command, sizeof(container->command) - 1);
 
     // Create file system (empty dir)
     if (mkdir(rootfs_path, 0755) != 0) {
@@ -57,3 +58,7 @@ void destroy_container(Xallve_Container* container) {
     }
 }
 
+void run_command(const Xallve_Container *container) {
+    printf("Running command in container: %s\n", container->command);
+    system(container->command);
+}

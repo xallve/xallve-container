@@ -1,3 +1,4 @@
+#define _GNU_SOURCE 
 #include "xallve_container/xallve_container.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -5,6 +6,8 @@
 #include <unistd.h>
 #include <sched.h>
 #include <linux/sched.h>
+
+#define STACK_SIZE (1024*1024)
 
 int container_main(void* arg) {
     Xallve_Container* container = (Xallve_Container*)arg;
@@ -14,39 +17,38 @@ int container_main(void* arg) {
 
     // Processes here
     // Processes here
+    run_command(container);
 
     return 0;
 }
 
 int main() {
-    Xallve_Container* main_container = create_container("xallve_container", "/tmp/xallve_container");
+    Xallve_Container* main_container = create_container("xallve_container", "/tmp/xallve_container", "/bin/sh");
     if (main_container) {
         printf("Container created: %s\n", main_container->name);
 
-        // Create new process with file system isolation
-        pid_t pid = fork();
-        if (pid == 0) {
-            // Child 
-            if (unshare(CLONE_NEWNS) != 0) {
-                perror("Failed to unshare namespace");
-                exit(EXIT_FAILURE);
-            }
-
-            if (chdir(CONTAINER_MOUNT_POINT) != 0) {
-                perror("Failed to change directory");
-                exit(EXIT_FAILURE);
-            }
-
-            return container_main(main_container);
-        } else if (pid > 0) {
-            // Main process
-            wait(NULL); // Wait for child to die.. :(
-
+        // Stack allocation for new process
+        char* stack = malloc(STACK_SIZE);
+        if (!stack) {
+            perror("Failed to allocate stack");
             destroy_container(main_container);
-        } else {
-            perror("Failed to fork");
-            destroy_container(main_container);
+            return EXIT_FAILURE;
         }
+
+        // Creating new process
+        pid_t pid = clone(container_main, stack + STACK_SIZE, CLONE_NEWNS | CLONE_NEWPID | CLONE_NEWNET | SIGCHLD, main_container);
+        if (pid == -1) {
+            perror("Failed to clone");
+            free(stack);
+            destroy_container(main_container);
+            return EXIT_FAILURE;
+        }
+
+        // Main process
+        waitpid(pid, NULL, 0);  // Wait for child process to die
+
+        free(stack);
+        destroy_container(main_container);
     } else {
         printf("Failed to create container\n");
     }
