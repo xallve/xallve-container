@@ -15,6 +15,12 @@ int container_main(void* arg) {
     // Setup container filesystem
     setup_filesystem(container);
 
+    // CGroups config to limit resourses
+    setup_cgroups(container->name);
+
+    // Container network config
+    setup_network(container->name, container->ip_address);
+
     // Processes here
     // Processes here
     run_command(container);
@@ -23,7 +29,7 @@ int container_main(void* arg) {
 }
 
 int main() {
-    Xallve_Container* main_container = create_container("xallve_container", "/tmp/xallve_container", "/bin/sh");
+    Xallve_Container* main_container = create_container("xallve_container", "/tmp/xallve_container", "/bin/sh", "10.0.0.2");
     if (main_container) {
         printf("Container created: %s\n", main_container->name);
 
@@ -46,6 +52,8 @@ int main() {
 
         // Main process
         waitpid(pid, NULL, 0);  // Wait for child process to die
+
+        destroy_cgroups(main_container->name);
 
         free(stack);
         destroy_container(main_container);
