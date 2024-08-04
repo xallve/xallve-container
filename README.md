@@ -1,5 +1,5 @@
 # xallve-container
-This project provides a basic containerization application written in C, inspired by Docker. It allows users to create and manage lightweight containers with resource constraints, run custom commands, and install dependencies.
+This project provides a basic very simple containerization application written in C, inspired by Docker. It allows users to create and manage lightweight containers with resource constraints, run custom commands, and install dependencies. It'd be great to isolate the container completely using VM in the future to make it a true container; for now it just isolates the container process inside linux
 
 
 ## Features
